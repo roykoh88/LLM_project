@@ -1,0 +1,50 @@
+version: "3.8"
+
+services:
+  # --- 프론트엔드 (추가됨) ---
+  frontend:
+    build:
+      context: ../../frontend # 프론트엔드 Dockerfile 위치
+    container_name: frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ../../frontend:/frontendWorkspace
+      # node_modules는 호스트와 컨테이너가 섞이지 않게 익명 볼륨으로 보호합니다.
+      - /frontendWorkspace/node_modules
+    environment:
+      - VITE_API_BASE_URL=https://seed-alloy-arcade-suffering.trycloudflare.com/v1
+    command: npm run dev -- --host 0.0.0.0
+    depends_on:
+      - backend
+
+  # --- 백엔드 ---
+  backend:
+    build:
+      context: ../../backend
+    container_name: backend
+    environment:
+      ML_BASE_URL: http://llm:9000
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../../backend:/backendWorkspace
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir /backendWorkspace
+    depends_on:
+      - llm
+
+  # --- LLM 서버 ---
+  llm:
+    build:
+      context: ../../llmServer
+    container_name: llm
+    env_file:
+      - ../../llmServer/.env
+    ports:
+      - "9000:9000"
+    volumes:
+      - ../../llmServer:/llmWorkspace
+    command: uvicorn app.main:app --host 0.0.0.0 --port 9000 --reload-dir /llmWorkspace
+
+# volumes:
+#   mysql_data:
